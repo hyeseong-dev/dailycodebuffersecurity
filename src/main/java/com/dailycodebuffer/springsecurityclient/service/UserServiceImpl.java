@@ -1,8 +1,10 @@
 package com.dailycodebuffer.springsecurityclient.service;
 
+import com.dailycodebuffer.springsecurityclient.entity.PasswordResetToken;
 import com.dailycodebuffer.springsecurityclient.entity.User;
 import com.dailycodebuffer.springsecurityclient.entity.VerificationToken;
 import com.dailycodebuffer.springsecurityclient.model.UserModel;
+import com.dailycodebuffer.springsecurityclient.repository.PasswordResetTokenRepository;
 import com.dailycodebuffer.springsecurityclient.repository.UserRepository;
 import com.dailycodebuffer.springsecurityclient.repository.VerificationTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,9 @@ public class UserServiceImpl implements UserService{
 
     @Autowired
     private VerificationTokenRepository verificationTokenRepository;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Autowired
     private PasswordEncoder bcryptPasswordEncoder;
@@ -87,5 +92,56 @@ public class UserServiceImpl implements UserService{
         userRepository.save(user);
 
         return "valid";
+    }
+
+    @Override
+    public User findUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    @Override
+    public void createPasswordResetTokenForUser(User user, String token) {
+        PasswordResetToken passwordResetToken = new PasswordResetToken(user, token);
+        passwordResetTokenRepository.save(passwordResetToken);
+    }
+
+    @Override
+    public String validatePasswordResetToken(String token) {
+        PasswordResetToken passwordResetToken  = passwordResetTokenRepository.findByToken(token);
+
+        // 토큰이 존재하지 않는 경우
+        if(passwordResetToken == null){
+            return "invalid";
+        }
+
+        User user = passwordResetToken.getUser();
+        Calendar cal = Calendar.getInstance();
+
+        // 토큰이 만료된 경우
+        if ( (passwordResetToken.getExpirationTime().getTime()
+                - cal.getTime().getTime() ) <= 0) { // 토큰만료시간 - 현재서버시간 <= 0 : 만료된 토큰
+            passwordResetTokenRepository.delete(passwordResetToken);
+            return "expired";
+        }
+
+        // 토큰이 유효한 경우
+
+        return "valid";
+    }
+
+    @Override
+    public Optional<User> getUserByPasswordResetToken(String token) {
+        return Optional.ofNullable(passwordResetTokenRepository.findByToken(token).getUser());
+    }
+
+    @Override
+    public void changePassword(User user, String newPassword) {
+        user.setPassworld(bcryptPasswordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    @Override
+    public boolean checkIfValidOldPassword(User user, String oldPassword) {
+        return bcryptPasswordEncoder.matches(oldPassword, user.getPassworld());
     }
 }
