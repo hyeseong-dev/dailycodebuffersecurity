@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Calendar;
+import java.util.Optional;
+
 /**
  * UserService 인터페이스의 구현 클래스.
  * 사용자 등록 및 인증 토큰 관리 기능을 제공합니다.
@@ -52,5 +55,37 @@ public class UserServiceImpl implements UserService{
         VerificationToken verificationToken = new VerificationToken(user, token);
 
         verificationTokenRepository.save(verificationToken);
+    }
+
+    /**
+     * 주어진 인증 토큰의 유효성을 검증합니다.
+     * 토큰이 유효하지 않거나 만료된 경우 해당하는 문자열을 반환합니다.
+     * @param token 검증할 인증 토큰
+     * @return 토큰의 상태를 나타내는 문자열 ("invalid", "expired" 또는 null)
+     */
+    @Override
+    public String validateVerificationToken(String token) {
+        Optional<VerificationToken> optionalToken  = verificationTokenRepository.findByToken(token);
+
+        // 토큰이 존재하지 않는 경우
+        if(!optionalToken.isPresent()){
+            return "invalid";
+        }
+
+        VerificationToken verificationToken = optionalToken.get();
+        User user = verificationToken.getUser();
+        Calendar cal = Calendar.getInstance();
+
+        // 토큰이 만료된 경우
+        if ( (verificationToken.getExpirationTime().getTime()
+                - cal.getTime().getTime() ) <= 0) { // 토큰만료시간 - 현재서버시간 <= 0 : 만료된 토큰
+            verificationTokenRepository.delete(verificationToken);
+            return "expired";
+        }
+        // 토큰이 유효한 경우
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        return "valid";
     }
 }

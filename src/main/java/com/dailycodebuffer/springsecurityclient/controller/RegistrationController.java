@@ -7,10 +7,7 @@ import com.dailycodebuffer.springsecurityclient.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 사용자 등록을 처리하는 컨트롤러.
@@ -43,6 +40,20 @@ public class RegistrationController {
     }
 
     /**
+     * 사용자 인증 토큰을 검증하는 GET 요청을 처리합니다.
+     * @param token 인증 토큰
+     * @return 사용자 검증 결과 문자열
+     */
+    @GetMapping("/verifyRegistration")
+    public String verifyRegistration(@RequestParam("token") String token){
+        String result = userService.validateVerificationToken(token);
+        if(result.equalsIgnoreCase("valid")){
+            return "User Verifies Successfully";
+        }
+        return "Bad User";
+    }
+
+    /**
      * 현재 애플리케이션의 URL을 반환합니다.
      * 이메일 인증 링크 생성 등에 사용됩니다.
      * @param request HttpServletRequest 객체
@@ -52,8 +63,7 @@ public class RegistrationController {
         return "http://" +
                 request.getServerName() +
                 ":" +
-                request.getServerPort() +
-                request.getServletPath();
+                request.getServerPort();
     }
 
 }
